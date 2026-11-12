@@ -15,9 +15,11 @@ PRESETS = {'1 × 1.5 in': (1, 1.5), '1 × 1 in': (1, 1),
            '3 × 1 in': (3, 1), '3 × 2 in': (3, 2),
            '4 × 2 in': (4, 2), '4 × 6 in': (4, 6)}
 # '1.5 × 1 in' is the roll's name; the page is the whole 42 × 29 mm backing, which is the
-# printer's feed pitch. The 38 × 26 mm label sits inside it. INSETS are (left, first-out edge,
-# right, last-out edge) in mm. Row 0 of the bitmap is the first part out of the printer.
-INSETS = {'1.5 × 1 in': (2, 2, 2, 1)}
+# printer's feed pitch. The driver measures the label as 38.10 × 25.40 mm with 1.2 mm unprintable
+# on each side. INSETS are the printable area (left, first-out edge, right, last-out edge) in mm:
+# label at 2 mm from the left and first-out edge, minus 1.2 mm unprintable at left and right.
+# Row 0 of the bitmap is the first part out of the printer.
+INSETS = {'1.5 × 1 in': (2 + 1.2, 2, 42 - 2 - 38.1 + 1.2, 29 - 2 - 25.4)}
 KINDS = ('QR', 'Code 128', 'UPC-A', 'EAN-13')
 
 

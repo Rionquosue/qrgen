@@ -80,4 +80,4 @@ Resolution choices are 203, 300 and 600 DPI. Use **203 DPI for the GC420d**. Hig
 
 ## Label rectangle and feed pitch
 
-The `1.5 × 1 in` profile prints on 42 × 29 mm backed labels. The page is the whole backing (336 × 232 dots, `^PW336^LL232`), so the printer advances exactly one label pitch per job and does not drift. The 38 × 26 mm label sits 2 mm from each side and from the first-out edge, with 1 mm at the last-out edge, and the design is centered in it. This profile also sends `^MNY` so the printer senses the gap and starts every label at the same place.
+The `1.5 × 1 in` profile prints on 42 × 29 mm backed labels. The page is the whole backing (336 × 232 dots, `^PW336^LL232`), so the printer advances exactly one label pitch per job and does not drift. The driver measures the label as 38.10 × 25.40 mm with 1.2 mm unprintable on each side. The label sits 2 mm from the left and from the first-out edge, and the design is centered in its printable area (35.7 mm wide). This profile also sends `^MNY` so the printer senses the gap and starts every label at the same place.
