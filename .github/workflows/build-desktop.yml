@@ -63,6 +63,8 @@ jobs:
           Python, Roboto, and all runtime dependencies are included.
           Generates QR, Code 128, UPC-A and EAN-13 labels with live preview and Roboto captions.
           Direct RAW ZPL printing to an installed Zebra GC420d queue bypasses Windows page layout.
+          QR and caption are centered together; font size and printer DPI are adjustable.
+          Use 203 DPI for the GC420d.
           Physical stock width/feed length are independent of Portrait/Landscape artwork orientation.
           The entire design, including captions, rotates without changing printer dimensions.
           Set physical width and feed length to match the loaded roll; default is 1 × 1.5 inches.

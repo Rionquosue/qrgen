@@ -39,7 +39,7 @@ The app renders at 203 dots/inch and sends the same monochrome bitmap using ZPL 
 
 ## Label and code limits
 
-Dimensions are width across the printhead × length along the feed direction. A 1 × 1.5 inch label becomes 203 × 304 dots after rounding. Eight dots of internal padding protect the design; QR has a four-module quiet zone, and linear codes have at least ten modules at each end. QR modules are at least three dots and barcode modules at least two. Text shrinks only to 14 dots; excessive text or dense codes are rejected, never clipped or stretched.
+Dimensions are width across the printhead × length along the feed direction. A 1 × 1.5 inch label becomes 203 × 304 dots after rounding. Eight dots of internal padding protect the design; QR has a four-module quiet zone, and linear codes have at least ten modules at each end. QR modules are at least three dots and barcode modules at least two. The selected font point size is preserved; excessive text or dense codes are rejected, never clipped or stretched.
 
 A UPC-A barcode needs more width than the default portrait label offers: select Landscape or a larger label. Only swap physical dimensions if this matches how the roll is loaded. Supply all 12 UPC-A or 13 EAN-13 digits, including a valid check digit. These barcode types are numeric; use QR or Code 128 for general text. Captions support characters present in Roboto; unsupported glyphs are rejected. Long captions wrap by character. Retail barcode certification is outside this utility's scope.
 
@@ -71,3 +71,9 @@ Files: `app.py` UI, `label.py` rendering/ZPL, `printing.py` transport, `tests/` 
 Physical dimensions always control the printer: **width across the printhead × feed length**. If your 1 × 1.5 inch stock is loaded 1.5 inches across with a 1 inch feed length, enable **Swap physical width / feed length**. The printer then receives 304 dots of width and 203 dots of length.
 
 **Portrait / Landscape** changes only the artwork. The code and Roboto caption are laid out together and rotated as one bitmap to fit the fixed physical stock. The preview and PNG show exactly the bitmap sent to the printer, with feed direction running top to bottom. Switching artwork orientation never changes the ZPL print width or feed length. The application cannot detect roll dimensions automatically.
+
+## Caption size and resolution
+
+Font size is adjustable from 4–36 points; the selected size is used without automatic shrinking. QR and caption are centered together using visible caption bounds, with a four-module QR quiet zone.
+
+Resolution choices are 203, 300 and 600 DPI. Use **203 DPI for the GC420d**. Higher values are for printers with matching printheads, not a quality boost for a 203-DPI printer. Dimensions, padding, font point sizes and PNG metadata follow the selected resolution. A mismatched DPI causes incorrect physical size and clipping.

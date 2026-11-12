@@ -17,60 +17,77 @@ PRESETS = {'1 × 1.5 in': (1, 1.5), '1 × 1 in': (1, 1),
 KINDS = ('QR', 'Code 128', 'UPC-A', 'EAN-13')
 
 
-def caption(text, width, max_height):
+def caption(text, width, max_height, font_size=8, dpi=203):
     if any(ord(c) not in GLYPHS for c in text):
         raise ValueError('The caption contains characters unavailable in Roboto.')
-    for size in range(22, 13, -1):
-        font = ImageFont.truetype(str(FONT), size)
-        lines, line = [], ''
-        for char in text:
-            if font.getlength(line + char) > width:
-                lines.append(line)
-                line = ''
-            line += char
-        lines.append(line)
-        step = sum(font.getmetrics()) + 2
-        if len(lines) * step <= max_height:
-            return font, lines, step
-    raise ValueError('Caption is too long. Shorten the text or choose a larger label.')
+    font = ImageFont.truetype(str(FONT), max(1, round(font_size * dpi / 72)))
+    lines, line = [], ''
+    for char in text:
+        if font.getlength(char) > width:
+            raise ValueError('Font is too large for this label.')
+        if font.getlength(line + char) > width:
+            lines.append(line)
+            line = ''
+        line += char
+    lines.append(line)
+    step = sum(font.getmetrics()) + max(1, round(dpi / 100))
+    layer = Image.new('L', (width, len(lines) * step), 255)
+    draw = ImageDraw.Draw(layer)
+    for i, line in enumerate(lines):
+        draw.text((width / 2, i * step), line, font=font, fill=0, anchor='mt')
+    bounds = ImageOps.invert(layer).getbbox()
+    if bounds is None:
+        raise ValueError('Caption has no visible characters.')
+    layer = layer.crop(bounds)
+    if layer.height > max_height:
+        raise ValueError('Caption is too large. Reduce font size or choose a larger label.')
+    return layer
 
 
-def render(text, kind='QR', width=1, height=1.5, orientation=None):
-    """Width/height always describe loaded media; orientation only turns artwork."""
+def render(text, kind='QR', width=1, height=1.5, orientation=None,
+           font_size=8, dpi=203):
+    """Center the complete design; width/height always describe loaded media."""
     if not text or text.isspace():
         raise ValueError('Enter text to generate a label.')
     if len(text) > 1000 or any(ord(c) < 32 or ord(c) == 127 for c in text):
         raise ValueError('Use a single line of printable text (maximum 1,000 characters).')
     if kind not in KINDS:
         raise ValueError('Unsupported code type.')
+    if dpi not in (203, 300, 600):
+        raise ValueError('Resolution must be 203, 300 or 600 DPI.')
+    if not 4 <= font_size <= 36:
+        raise ValueError('Font size must be 4–36 points.')
     if not 0.5 <= width <= 4.09 or not 0.5 <= height <= 39:
-        raise ValueError('Label dimensions exceed the GC420d print area.')
+        raise ValueError('Label dimensions exceed the supported print area.')
     if orientation not in (None, 'Portrait', 'Landscape'):
         raise ValueError('Choose Portrait or Landscape.')
-    w, h = round(width * DPI), round(height * DPI)
+    w, h = round(width * dpi), round(height * dpi)
     rotate = (orientation == 'Portrait' and w > h) or (
         orientation == 'Landscape' and w <= h)
     if rotate:
         w, h = h, w
-    margin = 8
-    font, lines, step = caption(text, w - margin * 2, h // 3)
-    cap_h = len(lines) * step
-    area_w, area_h = w - margin * 2, h - margin * 2 - cap_h - 6
+    margin = max(1, round(8 * dpi / 203))
+    gap = max(1, round(6 * dpi / 203))
+    cap = caption(text, w - margin * 2, h // 3, font_size, dpi)
     result = Image.new('L', (w, h), 255)
     draw = ImageDraw.Draw(result)
     if kind == 'QR':
-        qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, border=4)
+        qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, border=0)
         qr.add_data(text)
         try:
             qr.make(fit=True)
         except qrcode.exceptions.DataOverflowError as exc:
             raise ValueError('Text is too long for QR.') from exc
         matrix = qr.get_matrix()
-        module = min(area_w, area_h) // len(matrix)
-        if module < 3:
-            raise ValueError('QR is too dense for this label. Use a larger size or shorter text.')
-        sw = sh = len(matrix) * module
-        x, y = (w - sw) // 2, margin + (area_h - sh) // 2
+        n = len(matrix)
+        module = min((w - 2 * margin) // (n + 8),
+                     (h - 2 * margin - cap.height - gap) // (n + 12))
+        if module < max(3, round(3 * dpi / 203)):
+            raise ValueError('QR and caption do not fit. Reduce font size/text or enlarge the label.')
+        symbol_height = n * module
+        caption_gap = 4 * module + gap  # Keep the four-module quiet zone intact.
+        group_height = symbol_height + caption_gap + cap.height
+        x, y = (w - symbol_height) // 2, (h - group_height) // 2
         for row, values in enumerate(matrix):
             for col, black in enumerate(values):
                 if black:
@@ -89,21 +106,19 @@ def render(text, kind='QR', width=1, height=1.5, orientation=None):
             bits = code.build()[0]
         except Exception as exc:
             raise ValueError(f'Invalid {kind}: {exc}') from exc
-        # Preserve integral module widths and at least ten modules of quiet zone.
-        module = area_w // (len(bits) + 20)
-        if module < 2:
-            raise ValueError('Barcode needs a wider label. Choose Landscape or a larger label; keep media dimensions matched to the roll.')
+        module = (w - 2 * margin) // (len(bits) + 20)
+        if module < max(2, round(2 * dpi / 203)):
+            raise ValueError('Barcode needs a wider label. Choose Landscape or a larger label.')
+        symbol_height = h - 2 * margin - cap.height - gap
+        caption_gap = gap
+        y = margin
         x = (w - len(bits) * module) // 2
         for i, bit in enumerate(bits):
             if bit == '1':
-                draw.rectangle((x+i*module, margin, x+(i+1)*module-1,
-                                margin+area_h-1), fill=0)
-    y = h - margin - cap_h
-    for line in lines:
-        draw.text((w/2, y), line, font=font, fill=0, anchor='mt')
-        y += step
+                draw.rectangle((x+i*module, y, x+(i+1)*module-1,
+                                y+symbol_height-1), fill=0)
+    result.paste(cap, ((w - cap.width) // 2, y + symbol_height + caption_gap))
     result = result.point(lambda v: 255 if v >= 128 else 0, mode='1')
-    # Turn every pixel, including the caption, onto the fixed physical canvas.
     return result.transpose(Image.Transpose.ROTATE_270) if rotate else result
 
 

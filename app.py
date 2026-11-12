@@ -16,13 +16,15 @@ class App(tk.Tk):
         import sys
         if sys.platform == 'win32':
             self.iconbitmap(str(Path(__file__).parent / 'assets' / 'app.ico'))
-        self.geometry('660x790')
-        self.minsize(550, 650)
+        self.geometry('700x880')
+        self.minsize(650, 800)
         self.text = tk.StringVar(value='Hello Zebra')
         self.kind = tk.StringVar(value='QR')
         self.size = tk.StringVar(value=next(iter(PRESETS)))
         self.swap = tk.BooleanVar()
         self.orientation = tk.StringVar(value='Portrait')
+        self.font_size = tk.StringVar(value='8')
+        self.dpi = tk.StringVar(value='203')
         self.printer = tk.StringVar()
         self.copies = tk.StringVar(value='1')
         self.status = tk.StringVar()
@@ -49,10 +51,19 @@ class App(tk.Tk):
         for value in ('Portrait', 'Landscape'):
             ttk.Radiobutton(orientation_row, text=value, value=value,
                             variable=self.orientation).pack(side='left', padx=8)
+        typography = ttk.Frame(body)
+        typography.pack(fill='x', pady=(0, 8))
+        ttk.Label(typography, text='Font size (pt)').pack(side='left')
+        ttk.Spinbox(typography, from_=4, to=36, increment=0.5,
+                    textvariable=self.font_size, width=5).pack(side='left', padx=8)
+        ttk.Label(typography, text='Printer DPI').pack(side='left')
+        ttk.Combobox(typography, textvariable=self.dpi, values=('203', '300', '600'),
+                     state='readonly', width=5).pack(side='left', padx=8)
+        ttk.Label(body, text='GC420d: use 203 DPI. Other values require matching printer hardware.').pack(anchor='w')
         self.preview = tk.Canvas(body, bg='#dce0e4', highlightthickness=0, height=350)
         self.preview.pack(fill='both', expand=True)
         self.preview.bind('<Configure>', lambda _: self.draw_preview())
-        ttk.Label(body, text='Loaded-label preview • top to bottom = feed direction • 203 dpi').pack(pady=5)
+        ttk.Label(body, text='Loaded-label preview • top to bottom = feed direction').pack(pady=5)
         ttk.Label(body, text='Installed Zebra printer').pack(anchor='w')
         row = ttk.Frame(body)
         row.pack(fill='x', pady=5)
@@ -69,7 +80,7 @@ class App(tk.Tk):
         ttk.Button(row, text='Save PNG', command=lambda: self.export('png')).pack(side='right')
         ttk.Label(body, textvariable=self.status, wraplength=600).pack(fill='x', pady=5)
         self.pending = None
-        for var in (self.text, self.kind, self.size, self.swap, self.orientation):
+        for var in (self.text, self.kind, self.size, self.swap, self.orientation, self.font_size, self.dpi):
             var.trace_add('write', self.schedule)
         self.refresh()
         self.update_label()
@@ -101,7 +112,8 @@ class App(tk.Tk):
         if self.swap.get():
             w, h = h, w
         try:
-            self.image = render(self.text.get(), self.kind.get(), w, h, self.orientation.get())
+            self.image = render(self.text.get(), self.kind.get(), w, h, self.orientation.get(),
+                                font_size=float(self.font_size.get()), dpi=int(self.dpi.get()))
             self.status.set(f'Stock: {w:g} in wide × {h:g} in feed length • {self.orientation.get()} • {self.image.width} × {self.image.height} dots')
         except Exception as exc:
             self.image = None
@@ -169,7 +181,7 @@ class App(tk.Tk):
                      filetypes=[(kind.upper(), '*.'+kind)])
             if path:
                 if kind == 'png':
-                    self.image.save(path, dpi=(203, 203))
+                    self.image.save(path, dpi=(int(self.dpi.get()), int(self.dpi.get())))
                 else:
                     with open(path, 'wb') as f:
                         f.write(payload)

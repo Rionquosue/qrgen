@@ -97,3 +97,27 @@ def test_large_landscape_uses_length_without_exceeding_printhead():
     image = render('TURN ME', width=4, height=6, orientation='Landscape')
     assert image.size == (812, 1218)
     assert zxingcpp.read_barcode(image.convert('L')).text == 'TURN ME'
+
+@pytest.mark.parametrize('dpi', [203, 300, 600])
+@pytest.mark.parametrize('orientation', ['Portrait', 'Landscape'])
+def test_centered_group_and_resolution(dpi, orientation):
+    image = render('Hello Zebra', width=1.5, height=1, orientation=orientation, dpi=dpi)
+    assert image.size == (round(1.5*dpi), dpi)
+    left, top, right, bottom = ImageOps.invert(image.convert('L')).getbbox()
+    assert abs(left - (image.width-right)) <= 2
+    assert abs(top - (image.height-bottom)) <= 2
+    assert zxingcpp.read_barcode(image.convert('L')).text == 'Hello Zebra'
+    assert f'^PW{image.width}^LL{image.height}'.encode() in to_zpl(image)
+
+
+def test_font_size_is_honored():
+    from label import caption
+    small = caption('Hello Zebra', 400, 200, font_size=6)
+    large = caption('Hello Zebra', 400, 200, font_size=12)
+    assert large.height > small.height * 1.7
+    assert large.width > small.width * 1.7
+
+@pytest.mark.parametrize('kwargs', [{'dpi': 72}, {'font_size': 0}, {'font_size': float('nan')}])
+def test_invalid_typography(kwargs):
+    with pytest.raises(ValueError):
+        render('Hello Zebra', **kwargs)
