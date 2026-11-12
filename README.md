@@ -77,3 +77,7 @@ Physical dimensions always control the printer: **width across the printhead × 
 Font size is adjustable from 4–36 points; the selected size is used without automatic shrinking. QR and caption are centered together using visible caption bounds, with a four-module QR quiet zone.
 
 Resolution choices are 203, 300 and 600 DPI. Use **203 DPI for the GC420d**. Higher values are for printers with matching printheads, not a quality boost for a 203-DPI printer. Dimensions, padding, font point sizes and PNG metadata follow the selected resolution. A mismatched DPI causes incorrect physical size and clipping.
+
+## Label rectangle and feed pitch
+
+The `1.5 × 1 in` profile prints on 42 × 29 mm backed labels. The page is the whole backing (336 × 232 dots, `^PW336^LL232`), so the printer advances exactly one label pitch per job and does not drift. The 38 × 26 mm label sits 2 mm from each side and from the first-out edge, with 1 mm at the last-out edge, and the design is centered in it. This profile also sends `^MNY` so the printer senses the gap and starts every label at the same place.

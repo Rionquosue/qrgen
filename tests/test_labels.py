@@ -151,10 +151,10 @@ def test_profile_centered_within_offsets(orientation):
     name = '1.5 × 1 in'
     w, h = PRESETS[name]
     image = render('Hello Zebra', width=w, height=h, orientation=orientation, inset=INSETS[name])
-    assert image.size == (round(1.5 * 203), 203)
+    assert image.size == (round(42 / 25.4 * 203), round(29 / 25.4 * 203))
     l, t, r, b = (round(v / 25.4 * 203) for v in INSETS[name])
     left, top, right, bottom = ImageOps.invert(image.convert('L')).getbbox()
-    assert left >= l and top >= t and right <= image.width and bottom <= image.height
+    assert left >= l and top >= t and image.width - right >= r and image.height - bottom >= b
     assert abs((left - l) - (image.width - r - right)) <= 2
     assert abs((top - t) - (image.height - b - bottom)) <= 2
     assert zxingcpp.read_barcode(image.convert('L')).text == 'Hello Zebra'
@@ -171,3 +171,12 @@ def test_wrap_does_not_change_scanned_text_but_returns_do(kind):
     image = render(with_return, kind, 3, 2)
     assert zxingcpp.read_barcode(image.convert('L')).text == with_return
     assert caption(with_return, 400, 200).height > caption(text, 400, 200).height  # forced break
+
+
+def test_gap_sensing_and_pitch_length_for_backing_profile():
+    from label import PRESETS, INSETS
+    name = '1.5 × 1 in'
+    image = render('Hello Zebra', width=PRESETS[name][0], height=PRESETS[name][1], inset=INSETS[name])
+    zpl = to_zpl(image, web=True).decode()
+    assert zpl.startswith('^XA^MNY') and '^PW336^LL232' in zpl  # 29 mm feed pitch
+    assert '^MN' not in to_zpl(image).decode()

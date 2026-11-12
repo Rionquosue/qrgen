@@ -126,7 +126,8 @@ class App(tk.Tk):
             self.image = render(self.text.get('1.0', 'end-1c'), self.kind.get(), w, h, self.orientation.get(),
                                 font_size=float(self.font_size.get()), dpi=int(self.dpi.get()),
                                 inset=inset)
-            self.status.set(f'Stock: {w:g} in wide × {h:g} in feed length • {self.orientation.get()} • {self.image.width} × {self.image.height} dots')
+            stock = f'{w * 25.4:.0f} × {h * 25.4:.0f} mm backing' if inset else f'{w:g} in wide × {h:g} in feed length'
+            self.status.set(f'Stock: {stock} • {self.orientation.get()} • {self.image.width} × {self.image.height} dots')
         except Exception as exc:
             self.image = None
             self.status.set(str(exc))
@@ -150,7 +151,7 @@ class App(tk.Tk):
             copies = int(self.copies.get())
         except ValueError:
             raise ValueError('Copies must be an integer from 1 to 999.')
-        return to_zpl(self.image, copies)
+        return to_zpl(self.image, copies, web=self.size.get() in INSETS)
 
     def print_label(self):
         if self.busy:

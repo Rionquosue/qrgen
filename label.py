@@ -10,14 +10,14 @@ FONT = Path(__file__).parent / 'assets' / 'Roboto.ttf'
 with TTFont(FONT) as _font:
     GLYPHS = set(_font.getBestCmap())
 PRESETS = {'1 × 1.5 in': (1, 1.5), '1 × 1 in': (1, 1),
-           '1.5 × 1 in': (1.5, 1), '2 × 1 in': (2, 1),
+           '1.5 × 1 in': (42 / 25.4, 29 / 25.4), '2 × 1 in': (2, 1),
            '2 × 1.25 in': (2, 1.25), '2 × 2 in': (2, 2),
            '3 × 1 in': (3, 1), '3 × 2 in': (3, 2),
            '4 × 2 in': (4, 2), '4 × 6 in': (4, 6)}
-# Label rectangle on the page, as mm insets: (left, first-out edge, right, last-out edge).
-# The origin is the backing's edge. The 38 x 26 mm label starts 2 mm in from the left and
-# 2 mm after row 0, so it ends at 40 mm / 28 mm, past the 1.5 x 1 in page: negative right/bottom.
-INSETS = {'1.5 × 1 in': (2, 2, 1.5 * 25.4 - 40, 1 * 25.4 - 28)}
+# '1.5 × 1 in' is the roll's name; the page is the whole 42 × 29 mm backing, which is the
+# printer's feed pitch. The 38 × 26 mm label sits inside it. INSETS are (left, first-out edge,
+# right, last-out edge) in mm. Row 0 of the bitmap is the first part out of the printer.
+INSETS = {'1.5 × 1 in': (2, 2, 2, 1)}
 KINDS = ('QR', 'Code 128', 'UPC-A', 'EAN-13')
 
 
@@ -162,7 +162,8 @@ def render(text, kind='QR', width=1, height=1.5, orientation=None,
     return result
 
 
-def to_zpl(image, copies=1):
+def to_zpl(image, copies=1, web=False):
+    """web=True senses the gap (^MNY) so every label starts at the same place on the backing."""
     if not isinstance(copies, int) or not 1 <= copies <= 999:
         raise ValueError('Copies must be 1–999.')
     if image.mode != '1':
@@ -171,6 +172,7 @@ def to_zpl(image, copies=1):
     black = ImageOps.invert(image.convert('L')).convert('1')
     data = black.tobytes()
     stride = (image.width + 7) // 8
-    return (f'^XA^CI0^PW{image.width}^LL{image.height}^LH0,0^LS0^LT0^FWN^PON^PMN'
+    sensing = '^MNY' if web else ''
+    return (f'^XA{sensing}^CI0^PW{image.width}^LL{image.height}^LH0,0^LS0^LT0^FWN^PON^PMN'
             f'^FO0,0^GFA,{len(data)},{len(data)},{stride},{data.hex().upper()}'
             f'^FS^PQ{copies},0,1,N^XZ\r\n').encode('ascii')
