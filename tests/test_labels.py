@@ -19,7 +19,7 @@ def test_scannable(kind, text, w, h):
     assert decoded.text in ([text, '0' + text] if kind == 'UPC-A' else [text])
 
 @pytest.mark.parametrize('text,kind', [('036000291453', 'UPC-A'), ('123', 'UPC-A'),
-    ('5901234123458', 'EAN-13'), ('', 'QR'), ('a\nb', 'QR'), ('😀', 'QR')])
+    ('5901234123458', 'EAN-13'), ('', 'QR'), ('a\tb', 'QR'), ('😀', 'QR')])
 def test_invalid(text, kind):
     with pytest.raises(ValueError):
         render(text, kind, 2, 2)
@@ -149,3 +149,16 @@ def test_profile_centered_within_offsets(orientation):
     assert abs((left - l) - (image.width - r - right)) <= 2
     assert abs((top - t) - (image.height - b - bottom)) <= 2
     assert zxingcpp.read_barcode(image.convert('L')).text == 'Hello Zebra'
+
+
+@pytest.mark.parametrize('kind', ['QR', 'Code 128'])
+def test_wrap_does_not_change_scanned_text_but_returns_do(kind):
+    from label import caption
+    text = 'Hello Zebra'
+    narrow = render(text, kind, 3, 2, font_size=14)
+    assert zxingcpp.read_barcode(narrow.convert('L')).text == text
+    assert caption(text, 60, 200, 14).height > caption(text, 400, 200, 14).height  # wraps
+    with_return = 'Hello\nZebra'
+    image = render(with_return, kind, 3, 2)
+    assert zxingcpp.read_barcode(image.convert('L')).text == with_return
+    assert caption(with_return, 400, 200).height > caption(text, 400, 200).height  # forced break

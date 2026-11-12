@@ -18,7 +18,6 @@ class App(tk.Tk):
             self.iconbitmap(str(Path(__file__).parent / 'assets' / 'app.ico'))
         self.geometry('700x880')
         self.minsize(650, 800)
-        self.text = tk.StringVar(value='Hello Zebra')
         self.kind = tk.StringVar(value='QR')
         self.size = tk.StringVar(value=next(iter(PRESETS)))
         self.swap = tk.BooleanVar()
@@ -34,7 +33,10 @@ class App(tk.Tk):
         body = ttk.Frame(self, padding=20)
         body.pack(fill='both', expand=True)
         ttk.Label(body, text='Text / caption').pack(anchor='w')
-        ttk.Entry(body, textvariable=self.text).pack(fill='x', pady=(4, 14))
+        self.text = tk.Text(body, height=3, wrap='word', undo=True)
+        self.text.insert('1.0', 'Hello Zebra')
+        self.text.pack(fill='x', pady=(4, 14))
+        self.text.bind('<<Modified>>', self.text_changed)
         options = ttk.Frame(body)
         options.pack(fill='x')
         for title, var, values in [('Code type', self.kind, KINDS),
@@ -80,7 +82,7 @@ class App(tk.Tk):
         ttk.Button(row, text='Save PNG', command=lambda: self.export('png')).pack(side='right')
         ttk.Label(body, textvariable=self.status, wraplength=600).pack(fill='x', pady=5)
         self.pending = None
-        for var in (self.text, self.kind, self.size, self.swap, self.orientation, self.font_size, self.dpi):
+        for var in (self.kind, self.size, self.swap, self.orientation, self.font_size, self.dpi):
             var.trace_add('write', self.schedule)
         self.refresh()
         self.update_label()
@@ -96,6 +98,11 @@ class App(tk.Tk):
                 self.status.set('No printers found. Install the Zebra Windows printer first.')
         except Exception as exc:
             self.status.set(str(exc))
+
+    def text_changed(self, _):
+        if self.text.edit_modified():
+            self.text.edit_modified(False)
+            self.schedule()
 
     def schedule(self, *_):
         if self.pending:
@@ -115,7 +122,7 @@ class App(tk.Tk):
             inset = INSETS.get(self.size.get())
             if inset and self.swap.get():
                 raise ValueError('This profile has fixed offsets; turn off Swap.')
-            self.image = render(self.text.get(), self.kind.get(), w, h, self.orientation.get(),
+            self.image = render(self.text.get('1.0', 'end-1c'), self.kind.get(), w, h, self.orientation.get(),
                                 font_size=float(self.font_size.get()), dpi=int(self.dpi.get()),
                                 inset=inset)
             self.status.set(f'Stock: {w:g} in wide × {h:g} in feed length • {self.orientation.get()} • {self.image.width} × {self.image.height} dots')

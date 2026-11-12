@@ -3,7 +3,7 @@
 Small Python/Tkinter desktop label maker for the Zebra GC420d on Windows.
 
 - Live QR, Code 128, UPC-A and EAN-13 preview.
-- Exact input caption in bundled Google Roboto, wrapped without truncation.
+- Exact input caption in bundled Google Roboto, wrapped without truncation. Wrapping is visual only: the code always encodes your text exactly; a line break is encoded only when you press Enter.
 - Common label presets (the `1.5 × 1 in` profile centers the design within the label: 2 mm left, right and first-out edge, 1 mm last-out edge); default **1 inch wide × 1.5 inches tall**. Set physical width/feed length to match the loaded roll; select Portrait or Landscape separately.
 - Direct RAW ZPL printing with copies; no Windows print dialog, page margins or driver scaling.
 - PNG and ZPL export.

@@ -44,10 +44,12 @@ def wrap_words(text, font, width):
 
 
 def caption(text, width, max_height, font_size=8, dpi=203):
-    if any(ord(c) not in GLYPHS for c in text):
+    if any(ord(c) not in GLYPHS for c in text.replace('\n', '')):
         raise ValueError('The caption contains characters unavailable in Roboto.')
     font = ImageFont.truetype(str(FONT), max(1, round(font_size * dpi / 72)))
-    lines = wrap_words(text, font, width)
+    lines = []
+    for paragraph in text.split('\n'):
+        lines += wrap_words(paragraph, font, width) or ['']
     step = sum(font.getmetrics()) + max(1, round(dpi / 100))
     layer = Image.new('L', (width, len(lines) * step), 255)
     draw = ImageDraw.Draw(layer)
@@ -70,8 +72,8 @@ def render(text, kind='QR', width=1, height=1.5, orientation=None,
     printed on the backing, not within the full media."""
     if not text or text.isspace():
         raise ValueError('Enter text to generate a label.')
-    if len(text) > 1000 or any(ord(c) < 32 or ord(c) == 127 for c in text):
-        raise ValueError('Use a single line of printable text (maximum 1,000 characters).')
+    if len(text) > 1000 or any((ord(c) < 32 and c != '\n') or ord(c) == 127 for c in text):
+        raise ValueError('Use printable text and returns only (maximum 1,000 characters).')
     if kind not in KINDS:
         raise ValueError('Unsupported code type.')
     if dpi not in (203, 300, 600):
