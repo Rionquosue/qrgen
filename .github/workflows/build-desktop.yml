@@ -63,7 +63,9 @@ jobs:
           Python, Roboto, and all runtime dependencies are included.
           Generates QR, Code 128, UPC-A and EAN-13 labels with live preview and Roboto captions.
           Direct RAW ZPL printing to an installed Zebra GC420d queue bypasses Windows page layout.
-          Default label: 1 inch wide × 1.5 inches tall; presets and dimension swapping are available.
+          Physical stock width/feed length are independent of Portrait/Landscape artwork orientation.
+          The entire design, including captions, rotates without changing printer dimensions.
+          Set physical width and feed length to match the loaded roll; default is 1 × 1.5 inches.
           Automated code-decoding tests and packaged executable/UI smoke checks pass before publication.
           Physical printer output still requires verification on a GC420d. The executable is unsigned.
           NOTES

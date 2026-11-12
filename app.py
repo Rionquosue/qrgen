@@ -22,6 +22,7 @@ class App(tk.Tk):
         self.kind = tk.StringVar(value='QR')
         self.size = tk.StringVar(value=next(iter(PRESETS)))
         self.swap = tk.BooleanVar()
+        self.orientation = tk.StringVar(value='Portrait')
         self.printer = tk.StringVar()
         self.copies = tk.StringVar(value='1')
         self.status = tk.StringVar()
@@ -35,16 +36,23 @@ class App(tk.Tk):
         options = ttk.Frame(body)
         options.pack(fill='x')
         for title, var, values in [('Code type', self.kind, KINDS),
-                                   ('Label: width × height', self.size, tuple(PRESETS))]:
+                                   ('Stock: width × feed length', self.size, tuple(PRESETS))]:
             box = ttk.Frame(options)
             box.pack(side='left', fill='x', expand=True)
             ttk.Label(box, text=title).pack(anchor='w')
             ttk.Combobox(box, textvariable=var, values=values, state='readonly').pack(fill='x', padx=(0, 10))
-        ttk.Checkbutton(body, text='Swap width and height', variable=self.swap).pack(anchor='w', pady=10)
+        ttk.Checkbutton(body, text='Swap physical width / feed length', variable=self.swap).pack(anchor='w', pady=(8, 2))
+        ttk.Label(body, text='Match the loaded roll: width across the printhead, length along the feed.').pack(anchor='w')
+        orientation_row = ttk.Frame(body)
+        orientation_row.pack(fill='x', pady=8)
+        ttk.Label(orientation_row, text='Artwork orientation:').pack(side='left')
+        for value in ('Portrait', 'Landscape'):
+            ttk.Radiobutton(orientation_row, text=value, value=value,
+                            variable=self.orientation).pack(side='left', padx=8)
         self.preview = tk.Canvas(body, bg='#dce0e4', highlightthickness=0, height=350)
         self.preview.pack(fill='both', expand=True)
         self.preview.bind('<Configure>', lambda _: self.draw_preview())
-        ttk.Label(body, text='Preview enlarged to fit • printed at 203 dpi').pack(pady=5)
+        ttk.Label(body, text='Loaded-label preview • top to bottom = feed direction • 203 dpi').pack(pady=5)
         ttk.Label(body, text='Installed Zebra printer').pack(anchor='w')
         row = ttk.Frame(body)
         row.pack(fill='x', pady=5)
@@ -61,7 +69,7 @@ class App(tk.Tk):
         ttk.Button(row, text='Save PNG', command=lambda: self.export('png')).pack(side='right')
         ttk.Label(body, textvariable=self.status, wraplength=600).pack(fill='x', pady=5)
         self.pending = None
-        for var in (self.text, self.kind, self.size, self.swap):
+        for var in (self.text, self.kind, self.size, self.swap, self.orientation):
             var.trace_add('write', self.schedule)
         self.refresh()
         self.update_label()
@@ -86,13 +94,15 @@ class App(tk.Tk):
         self.print_button.state(['disabled'])
 
     def update_label(self):
+        if self.pending:
+            self.after_cancel(self.pending)
         self.pending = None
         w, h = PRESETS[self.size.get()]
         if self.swap.get():
             w, h = h, w
         try:
-            self.image = render(self.text.get(), self.kind.get(), w, h)
-            self.status.set(f'{w:g} × {h:g} in • {self.image.width} × {self.image.height} dots')
+            self.image = render(self.text.get(), self.kind.get(), w, h, self.orientation.get())
+            self.status.set(f'Stock: {w:g} in wide × {h:g} in feed length • {self.orientation.get()} • {self.image.width} × {self.image.height} dots')
         except Exception as exc:
             self.image = None
             self.status.set(str(exc))
@@ -181,6 +191,15 @@ def self_test(destination):
     window.update()
     assert window.image is not None
     assert window.photo.width() > 0
+    for swapped in (False, True):
+        window.swap.set(swapped)
+        for orientation in ('Portrait', 'Landscape'):
+            window.orientation.set(orientation)
+            payload = window.current_payload()
+            expected = (304, 203) if swapped else (203, 304)
+            assert window.image.size == expected
+            assert f'^PW{expected[0]}^LL{expected[1]}'.encode() in payload
+            window.update()
     window.destroy()
     Path(destination).write_text(json.dumps({'ok': True}), encoding='utf-8')
 

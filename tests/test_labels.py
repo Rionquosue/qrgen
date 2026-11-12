@@ -62,3 +62,38 @@ def test_failed_write_aborts(monkeypatch):
         printing.send_raw('Zebra', b'123')
     p.AbortPrinter.assert_called_once()
     p.ClosePrinter.assert_called_once()
+
+@pytest.mark.parametrize('w,h', [(1, 1.5), (1.5, 1), (2, 2), (3, 4)])
+@pytest.mark.parametrize('orientation', ['Portrait', 'Landscape'])
+def test_orientation_preserves_media_and_all_pixels(w, h, orientation):
+    text = 'TURN ME'
+    actual = render(text, width=w, height=h, orientation=orientation)
+    rotate = (orientation == 'Portrait' and w > h) or (orientation == 'Landscape' and w <= h)
+    # Reconstruct the logical artwork, then compare every pixel (caption included).
+    logical = render(text, width=h if rotate else w, height=w if rotate else h)
+    expected = logical.transpose(Image.Transpose.ROTATE_270) if rotate else logical
+    assert actual.size == (round(w * 203), round(h * 203))
+    assert actual.tobytes() == expected.tobytes()
+    assert zxingcpp.read_barcode(actual.convert('L')).text == text
+    zpl = to_zpl(actual).decode()
+    assert f'^PW{actual.width}^LL{actual.height}' in zpl
+    total, count, stride, data = re.search(r'\^GFA,(\d+),(\d+),(\d+),([0-9A-F]+)', zpl).groups()
+    packed = Image.frombytes('1', actual.size, bytes.fromhex(data))
+    assert ImageOps.invert(packed.convert('L')).convert('1').tobytes() == actual.tobytes()
+
+
+def test_landscape_barcode_on_fixed_portrait_stock():
+    image = render('036000291452', 'UPC-A', 1, 1.5, 'Landscape')
+    assert image.size == (203, 304)
+    assert zxingcpp.read_barcode(image.convert('L')).text in ('036000291452', '0036000291452')
+
+
+def test_orientation_does_not_bypass_printhead_width_limit():
+    with pytest.raises(ValueError, match='print area'):
+        render('TEST', width=6, height=4, orientation='Portrait')
+
+
+def test_large_landscape_uses_length_without_exceeding_printhead():
+    image = render('TURN ME', width=4, height=6, orientation='Landscape')
+    assert image.size == (812, 1218)
+    assert zxingcpp.read_barcode(image.convert('L')).text == 'TURN ME'

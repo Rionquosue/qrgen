@@ -35,7 +35,8 @@ def caption(text, width, max_height):
     raise ValueError('Caption is too long. Shorten the text or choose a larger label.')
 
 
-def render(text, kind='QR', width=1, height=1.5):
+def render(text, kind='QR', width=1, height=1.5, orientation=None):
+    """Width/height always describe loaded media; orientation only turns artwork."""
     if not text or text.isspace():
         raise ValueError('Enter text to generate a label.')
     if len(text) > 1000 or any(ord(c) < 32 or ord(c) == 127 for c in text):
@@ -44,7 +45,13 @@ def render(text, kind='QR', width=1, height=1.5):
         raise ValueError('Unsupported code type.')
     if not 0.5 <= width <= 4.09 or not 0.5 <= height <= 39:
         raise ValueError('Label dimensions exceed the GC420d print area.')
+    if orientation not in (None, 'Portrait', 'Landscape'):
+        raise ValueError('Choose Portrait or Landscape.')
     w, h = round(width * DPI), round(height * DPI)
+    rotate = (orientation == 'Portrait' and w > h) or (
+        orientation == 'Landscape' and w <= h)
+    if rotate:
+        w, h = h, w
     margin = 8
     font, lines, step = caption(text, w - margin * 2, h // 3)
     cap_h = len(lines) * step
@@ -85,7 +92,7 @@ def render(text, kind='QR', width=1, height=1.5):
         # Preserve integral module widths and at least ten modules of quiet zone.
         module = area_w // (len(bits) + 20)
         if module < 2:
-            raise ValueError('Barcode needs a wider label. Swap width/height or choose a larger size.')
+            raise ValueError('Barcode needs a wider label. Choose Landscape or a larger label; keep media dimensions matched to the roll.')
         x = (w - len(bits) * module) // 2
         for i, bit in enumerate(bits):
             if bit == '1':
@@ -95,7 +102,9 @@ def render(text, kind='QR', width=1, height=1.5):
     for line in lines:
         draw.text((w/2, y), line, font=font, fill=0, anchor='mt')
         y += step
-    return result.point(lambda v: 255 if v >= 128 else 0, mode='1')
+    result = result.point(lambda v: 255 if v >= 128 else 0, mode='1')
+    # Turn every pixel, including the caption, onto the fixed physical canvas.
+    return result.transpose(Image.Transpose.ROTATE_270) if rotate else result
 
 
 def to_zpl(image, copies=1):
