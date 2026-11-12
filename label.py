@@ -14,9 +14,10 @@ PRESETS = {'1 × 1.5 in': (1, 1.5), '1 × 1 in': (1, 1),
            '2 × 1.25 in': (2, 1.25), '2 × 2 in': (2, 2),
            '3 × 1 in': (3, 1), '3 × 2 in': (3, 2),
            '4 × 2 in': (4, 2), '4 × 6 in': (4, 6)}
-# Thermal label position on the backing, in mm: (left, first-out edge, right, last-out edge).
-# Row 0 of the bitmap is the first part out of the printer.
-INSETS = {'1.5 × 1 in': (2, 2, 2, 1)}
+# Label rectangle on the page, as mm insets: (left, first-out edge, right, last-out edge).
+# Row 0 of the bitmap is the first part out of the printer. The 26 mm label sits 2 mm from
+# row 0 and ends 28 mm down, past the end of the 1 in (25.4 mm) page, hence a negative bottom.
+INSETS = {'1.5 × 1 in': (2, 2, 2, 25.4 - 28)}
 KINDS = ('QR', 'Code 128', 'UPC-A', 'EAN-13')
 
 
@@ -152,6 +153,9 @@ def render(text, kind='QR', width=1, height=1.5, orientation=None,
     if rotate:
         result = result.transpose(Image.Transpose.ROTATE_270)
     if inset:
+        box = ImageOps.invert(result.convert('L')).getbbox()
+        if box and (pl + box[2] > page[0] or pt + box[3] > page[1]):
+            raise ValueError('Design does not fit the printable area. Reduce font size or text.')
         sheet = Image.new('1', page, 1)
         sheet.paste(result, (pl, pt))
         return sheet

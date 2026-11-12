@@ -145,7 +145,7 @@ def test_profile_centered_within_offsets(orientation):
     assert image.size == (round(1.5 * 203), 203)
     l, t, r, b = (round(v / 25.4 * 203) for v in INSETS[name])
     left, top, right, bottom = ImageOps.invert(image.convert('L')).getbbox()
-    assert left >= l and top >= t and image.width - right >= r and image.height - bottom >= b
+    assert left >= l and top >= t and image.width - right >= r and bottom <= image.height
     assert abs((left - l) - (image.width - r - right)) <= 2
     assert abs((top - t) - (image.height - b - bottom)) <= 2
     assert zxingcpp.read_barcode(image.convert('L')).text == 'Hello Zebra'
