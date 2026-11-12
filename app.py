@@ -35,6 +35,7 @@ class App(tk.Tk):
         ttk.Label(body, text='Text / caption').pack(anchor='w')
         self.text = tk.Text(body, height=3, wrap='word', undo=True)
         self.text.insert('1.0', 'Hello Zebra')
+        self.text.edit_modified(False)
         self.text.pack(fill='x', pady=(4, 14))
         self.text.bind('<<Modified>>', self.text_changed)
         options = ttk.Frame(body)
