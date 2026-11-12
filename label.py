@@ -13,11 +13,10 @@ PRESETS = {'1 × 1.5 in': (1, 1.5), '1 × 1 in': (1, 1),
            '1.5 × 1 in': (1.5, 1), '2 × 1 in': (2, 1),
            '2 × 1.25 in': (2, 1.25), '2 × 2 in': (2, 2),
            '3 × 1 in': (3, 1), '3 × 2 in': (3, 2),
-           '4 × 2 in': (4, 2), '4 × 6 in': (4, 6),
-           '42 × 29 mm tag': (42 / 25.4, 29 / 25.4)}
+           '4 × 2 in': (4, 2), '4 × 6 in': (4, 6)}
 # Thermal label position on the backing, in mm: (left, first-out edge, right, last-out edge).
 # Row 0 of the bitmap is the first part out of the printer.
-INSETS = {'42 × 29 mm tag': (2, 2, 2, 1)}
+INSETS = {'1.5 × 1 in': (2, 2, 2, 1)}
 KINDS = ('QR', 'Code 128', 'UPC-A', 'EAN-13')
 
 

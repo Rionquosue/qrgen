@@ -137,12 +137,12 @@ def test_caption_wraps_words():
 
 
 @pytest.mark.parametrize('orientation', ['Portrait', 'Landscape'])
-def test_tag_centered_on_label_not_backing(orientation):
+def test_profile_centered_within_offsets(orientation):
     from label import PRESETS, INSETS
-    name = '42 × 29 mm tag'
+    name = '1.5 × 1 in'
     w, h = PRESETS[name]
     image = render('Hello Zebra', width=w, height=h, orientation=orientation, inset=INSETS[name])
-    assert image.size == (336, 232)
+    assert image.size == (round(1.5 * 203), 203)
     l, t, r, b = (round(v / 25.4 * 203) for v in INSETS[name])
     left, top, right, bottom = ImageOps.invert(image.convert('L')).getbbox()
     assert left >= l and top >= t and image.width - right >= r and image.height - bottom >= b

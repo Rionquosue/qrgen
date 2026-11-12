@@ -114,7 +114,7 @@ class App(tk.Tk):
         try:
             inset = INSETS.get(self.size.get())
             if inset and self.swap.get():
-                raise ValueError('The tag preset has fixed offsets; turn off Swap.')
+                raise ValueError('This profile has fixed offsets; turn off Swap.')
             self.image = render(self.text.get(), self.kind.get(), w, h, self.orientation.get(),
                                 font_size=float(self.font_size.get()), dpi=int(self.dpi.get()),
                                 inset=inset)
