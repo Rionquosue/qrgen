@@ -1,0 +1,74 @@
+name: Build desktop package
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements-build.txt -r requirements-dev.txt
+      - name: Test application
+        run: python -m pytest -q
+      - name: Build Windows package
+        shell: powershell
+        run: ./packaging/build_windows.ps1
+      - name: Verify executable and package
+        shell: powershell
+        run: ./packaging/verify_windows.ps1
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: windows-package
+          path: dist/QRGen-Windows-x64.zip
+          if-no-files-found: error
+
+  release:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: windows
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          name: windows-package
+          path: packages
+      - name: Publish portable package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: v0.1.${{ github.run_number }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          cd packages
+          sha256sum QRGen-Windows-x64.zip > SHA256SUMS.txt
+          cat > release-notes.md <<'NOTES'
+          Windows x64: extract the entire ZIP, then run QRGen.exe.
+          Optionally run Create-Desktop-Shortcut.cmd to add QRGen to your desktop.
+          Python, Roboto, and all runtime dependencies are included.
+          Generates QR, Code 128, UPC-A and EAN-13 labels with live preview and Roboto captions.
+          Direct RAW ZPL printing to an installed Zebra GC420d queue bypasses Windows page layout.
+          Default label: 1 inch wide × 1.5 inches tall; presets and dimension swapping are available.
+          Automated code-decoding tests and packaged executable/UI smoke checks pass before publication.
+          Physical printer output still requires verification on a GC420d. The executable is unsigned.
+          NOTES
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" QRGen-Windows-x64.zip SHA256SUMS.txt --clobber
+          else
+            gh release create "$RELEASE_TAG" --target "$COMMIT_SHA" --title "QRGen $RELEASE_TAG" --notes-file release-notes.md QRGen-Windows-x64.zip SHA256SUMS.txt
+          fi

@@ -1,0 +1,5 @@
+Pillow==13.0.0
+qrcode==8.2
+python-barcode==0.16.1
+fonttools==4.61.1
+pywin32>=306; sys_platform == 'win32'
