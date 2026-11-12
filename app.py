@@ -168,8 +168,8 @@ class App(tk.Tk):
         self.status.set('Sending to printer…')
         def work():
             try:
-                job = send_raw(name, payload)
-                self.events.put((True, f'Sent to queue: job {job}.'))
+                port = send_raw(name, payload)
+                self.events.put((True, f'Sent directly to {port}.'))
             except Exception as exc:
                 self.events.put((False, str(exc)))
         threading.Thread(target=work, daemon=True).start()

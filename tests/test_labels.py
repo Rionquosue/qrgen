@@ -43,25 +43,33 @@ def test_invalid_copies(copies):
     with pytest.raises(ValueError):
         to_zpl(render('test'), copies)
 
-def test_raw_partial_write(monkeypatch):
-    p = Mock()
-    p.WritePrinter.side_effect = [2, 3]
-    p.StartDocPrinter.return_value = 42
+def _port_mocks(monkeypatch, port='USB001'):
+    p, f = Mock(), Mock()
+    p.GetPrinter.return_value = {'pPortName': port}
     monkeypatch.setattr(printing, 'api', lambda: p)
-    assert printing.send_raw('Zebra', b'12345') == 42
-    assert p.WritePrinter.call_args_list[1].args[1] == b'345'
-    assert p.StartDocPrinter.call_args.args[2][2] == 'RAW'
-    p.ClosePrinter.assert_called_once()
-    p.AbortPrinter.assert_not_called()
+    monkeypatch.setattr(printing, 'device', lambda: f)
+    return p, f
 
-def test_failed_write_aborts(monkeypatch):
-    p = Mock()
-    p.WritePrinter.return_value = 0
-    monkeypatch.setattr(printing, 'api', lambda: p)
+def test_direct_port_partial_write(monkeypatch):
+    p, f = _port_mocks(monkeypatch)
+    f.WriteFile.side_effect = [(0, 2), (0, 3)]
+    assert printing.send_raw('Zebra', b'12345') == 'USB001'
+    assert f.CreateFile.call_args.args[0] == '\\\\.\\USB001'
+    assert f.WriteFile.call_args_list[1].args[1] == b'345'
+    f.CreateFile.return_value.Close.assert_called_once()
+    p.StartDocPrinter.assert_not_called()  # the spooler is never used
+
+def test_failed_write_closes_port(monkeypatch):
+    p, f = _port_mocks(monkeypatch)
+    f.WriteFile.return_value = (0, 0)
     with pytest.raises(RuntimeError):
         printing.send_raw('Zebra', b'123')
-    p.AbortPrinter.assert_called_once()
-    p.ClosePrinter.assert_called_once()
+    f.CreateFile.return_value.Close.assert_called_once()
+
+def test_non_local_port_rejected(monkeypatch):
+    _port_mocks(monkeypatch, 'IP_192.168.0.5')
+    with pytest.raises(RuntimeError, match='local'):
+        printing.send_raw('Zebra', b'123')
 
 @pytest.mark.parametrize('w,h', [(1, 1.5), (1.5, 1), (2, 2), (3, 4)])
 @pytest.mark.parametrize('orientation', ['Portrait', 'Landscape'])
@@ -145,7 +153,7 @@ def test_profile_centered_within_offsets(orientation):
     assert image.size == (round(1.5 * 203), 203)
     l, t, r, b = (round(v / 25.4 * 203) for v in INSETS[name])
     left, top, right, bottom = ImageOps.invert(image.convert('L')).getbbox()
-    assert left >= l and top >= t and image.width - right >= r and bottom <= image.height
+    assert left >= l and top >= t and right <= image.width and bottom <= image.height
     assert abs((left - l) - (image.width - r - right)) <= 2
     assert abs((top - t) - (image.height - b - bottom)) <= 2
     assert zxingcpp.read_barcode(image.convert('L')).text == 'Hello Zebra'
