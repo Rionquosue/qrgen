@@ -205,8 +205,9 @@ def self_test(destination):
     """Exercise bundled rendering, Tk and pywin32 without sending a print job."""
     import json
     from pathlib import Path
-    from printing import api
+    from printing import api, usb_paths
     api()
+    usb_paths()  # exercises the SetupAPI calls; no printer is required
     for kind, text in [('QR', 'Hello Zebra'), ('Code 128', 'ABC-123'),
                        ('UPC-A', '036000291452'), ('EAN-13', '5901234123457')]:
         image = render(text, kind, 2, 2)

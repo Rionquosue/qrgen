@@ -48,13 +48,14 @@ def _port_mocks(monkeypatch, port='USB001'):
     p.GetPrinter.return_value = {'pPortName': port}
     monkeypatch.setattr(printing, 'api', lambda: p)
     monkeypatch.setattr(printing, 'device', lambda: f)
+    monkeypatch.setattr(printing, 'usb_paths', lambda: ['\\\\?\\usb#vid_0a5f&pid_0001#x#{guid}', '\\\\?\\usb#vid_1111&pid_2#y#{guid}'])
     return p, f
 
 def test_direct_port_partial_write(monkeypatch):
     p, f = _port_mocks(monkeypatch)
     f.WriteFile.side_effect = [(0, 2), (0, 3)]
     assert printing.send_raw('Zebra', b'12345') == 'USB001'
-    assert f.CreateFile.call_args.args[0] == '\\\\.\\USB001'
+    assert f.CreateFile.call_args.args[0] == '\\\\?\\usb#vid_0a5f&pid_0001#x#{guid}'
     assert f.WriteFile.call_args_list[1].args[1] == b'345'
     f.CreateFile.return_value.Close.assert_called_once()
     p.StartDocPrinter.assert_not_called()  # the spooler is never used
