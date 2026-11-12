@@ -17,19 +17,34 @@ PRESETS = {'1 × 1.5 in': (1, 1.5), '1 × 1 in': (1, 1),
 KINDS = ('QR', 'Code 128', 'UPC-A', 'EAN-13')
 
 
+def wrap_words(text, font, width):
+    """Wrap whole words; split only tokens wider than an entire line."""
+    lines, line = [], ''
+    for word in text.split():
+        candidate = f'{line} {word}' if line else word
+        if font.getlength(candidate) <= width:
+            line = candidate
+            continue
+        if line:
+            lines.append(line)
+            line = ''
+        for char in word:
+            if font.getlength(char) > width:
+                raise ValueError('Font is too large for this label.')
+            if font.getlength(line + char) > width:
+                lines.append(line)
+                line = ''
+            line += char
+    if line:
+        lines.append(line)
+    return lines
+
+
 def caption(text, width, max_height, font_size=8, dpi=203):
     if any(ord(c) not in GLYPHS for c in text):
         raise ValueError('The caption contains characters unavailable in Roboto.')
     font = ImageFont.truetype(str(FONT), max(1, round(font_size * dpi / 72)))
-    lines, line = [], ''
-    for char in text:
-        if font.getlength(char) > width:
-            raise ValueError('Font is too large for this label.')
-        if font.getlength(line + char) > width:
-            lines.append(line)
-            line = ''
-        line += char
-    lines.append(line)
+    lines = wrap_words(text, font, width)
     step = sum(font.getmetrics()) + max(1, round(dpi / 100))
     layer = Image.new('L', (width, len(lines) * step), 255)
     draw = ImageDraw.Draw(layer)

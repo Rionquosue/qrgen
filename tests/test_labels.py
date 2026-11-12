@@ -121,3 +121,16 @@ def test_font_size_is_honored():
 def test_invalid_typography(kwargs):
     with pytest.raises(ValueError):
         render('Hello Zebra', **kwargs)
+
+
+def test_caption_wraps_words():
+    from label import wrap_words, FONT
+    from PIL import ImageFont
+    font = ImageFont.truetype(str(FONT), 22)
+    width = max(font.getlength('Hello Zebra'), font.getlength('label maker')) + 1
+    assert wrap_words('Hello Zebra label maker', font, width) == ['Hello Zebra', 'label maker']
+    assert wrap_words('  Hello   Zebra  ', font, width) == ['Hello Zebra']
+    token = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    lines = wrap_words(token, font, width)
+    assert ''.join(lines) == token
+    assert all(font.getlength(line) <= width for line in lines)
