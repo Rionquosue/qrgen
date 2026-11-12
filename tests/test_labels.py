@@ -134,3 +134,18 @@ def test_caption_wraps_words():
     lines = wrap_words(token, font, width)
     assert ''.join(lines) == token
     assert all(font.getlength(line) <= width for line in lines)
+
+
+@pytest.mark.parametrize('orientation', ['Portrait', 'Landscape'])
+def test_tag_centered_on_label_not_backing(orientation):
+    from label import PRESETS, INSETS
+    name = '42 × 29 mm tag'
+    w, h = PRESETS[name]
+    image = render('Hello Zebra', width=w, height=h, orientation=orientation, inset=INSETS[name])
+    assert image.size == (336, 232)
+    l, t, r, b = (round(v / 25.4 * 203) for v in INSETS[name])
+    left, top, right, bottom = ImageOps.invert(image.convert('L')).getbbox()
+    assert left >= l and top >= t and image.width - right >= r and image.height - bottom >= b
+    assert abs((left - l) - (image.width - r - right)) <= 2
+    assert abs((top - t) - (image.height - b - bottom)) <= 2
+    assert zxingcpp.read_barcode(image.convert('L')).text == 'Hello Zebra'

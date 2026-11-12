@@ -13,7 +13,11 @@ PRESETS = {'1 × 1.5 in': (1, 1.5), '1 × 1 in': (1, 1),
            '1.5 × 1 in': (1.5, 1), '2 × 1 in': (2, 1),
            '2 × 1.25 in': (2, 1.25), '2 × 2 in': (2, 2),
            '3 × 1 in': (3, 1), '3 × 2 in': (3, 2),
-           '4 × 2 in': (4, 2), '4 × 6 in': (4, 6)}
+           '4 × 2 in': (4, 2), '4 × 6 in': (4, 6),
+           '42 × 29 mm tag': (42 / 25.4, 29 / 25.4)}
+# Thermal label position on the backing, in mm: (left, first-out edge, right, last-out edge).
+# Row 0 of the bitmap is the first part out of the printer.
+INSETS = {'42 × 29 mm tag': (2, 2, 2, 1)}
 KINDS = ('QR', 'Code 128', 'UPC-A', 'EAN-13')
 
 
@@ -60,8 +64,11 @@ def caption(text, width, max_height, font_size=8, dpi=203):
 
 
 def render(text, kind='QR', width=1, height=1.5, orientation=None,
-           font_size=8, dpi=203):
-    """Center the complete design; width/height always describe loaded media."""
+           font_size=8, dpi=203, inset=None):
+    """Center the complete design; width/height always describe loaded media.
+
+    inset=(left, top, right, bottom) in mm centers the design within the label
+    printed on the backing, not within the full media."""
     if not text or text.isspace():
         raise ValueError('Enter text to generate a label.')
     if len(text) > 1000 or any(ord(c) < 32 or ord(c) == 127 for c in text):
@@ -77,6 +84,13 @@ def render(text, kind='QR', width=1, height=1.5, orientation=None,
     if orientation not in (None, 'Portrait', 'Landscape'):
         raise ValueError('Choose Portrait or Landscape.')
     w, h = round(width * dpi), round(height * dpi)
+    page = (w, h)
+    pl = pt = 0
+    if inset:
+        pl, pt, pr, pb = (round(v / 25.4 * dpi) for v in inset)
+        w, h = w - pl - pr, h - pt - pb
+        if w < 1 or h < 1:
+            raise ValueError('Label offsets exceed the media size.')
     rotate = (orientation == 'Portrait' and w > h) or (
         orientation == 'Landscape' and w <= h)
     if rotate:
@@ -134,7 +148,13 @@ def render(text, kind='QR', width=1, height=1.5, orientation=None,
                                 y+symbol_height-1), fill=0)
     result.paste(cap, ((w - cap.width) // 2, y + symbol_height + caption_gap))
     result = result.point(lambda v: 255 if v >= 128 else 0, mode='1')
-    return result.transpose(Image.Transpose.ROTATE_270) if rotate else result
+    if rotate:
+        result = result.transpose(Image.Transpose.ROTATE_270)
+    if inset:
+        sheet = Image.new('1', page, 1)
+        sheet.paste(result, (pl, pt))
+        return sheet
+    return result
 
 
 def to_zpl(image, copies=1):

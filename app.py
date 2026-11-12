@@ -4,7 +4,7 @@ import threading
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from PIL import Image, ImageTk
-from label import PRESETS, KINDS, render, to_zpl
+from label import PRESETS, INSETS, KINDS, render, to_zpl
 from printing import printers, send_raw
 
 
@@ -112,8 +112,12 @@ class App(tk.Tk):
         if self.swap.get():
             w, h = h, w
         try:
+            inset = INSETS.get(self.size.get())
+            if inset and self.swap.get():
+                raise ValueError('The tag preset has fixed offsets; turn off Swap.')
             self.image = render(self.text.get(), self.kind.get(), w, h, self.orientation.get(),
-                                font_size=float(self.font_size.get()), dpi=int(self.dpi.get()))
+                                font_size=float(self.font_size.get()), dpi=int(self.dpi.get()),
+                                inset=inset)
             self.status.set(f'Stock: {w:g} in wide × {h:g} in feed length • {self.orientation.get()} • {self.image.width} × {self.image.height} dots')
         except Exception as exc:
             self.image = None
