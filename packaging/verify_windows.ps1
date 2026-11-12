@@ -9,6 +9,7 @@ if ($p.ExitCode -ne 0) { throw "Executable self-test failed: $($p.ExitCode)" }
 if (-not (Test-Path $result)) { throw 'Executable produced no self-test report.' }
 $report = Get-Content $result -Raw | ConvertFrom-Json
 if (-not $report.ok) { throw 'Invalid self-test report.' }
+Add-Type -AssemblyName System.Drawing
 $icon = [System.Drawing.Icon]::ExtractAssociatedIcon($exe)
 if ($null -eq $icon) { throw 'Missing executable icon.' }
 $icon.Dispose()
