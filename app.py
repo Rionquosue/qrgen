@@ -19,7 +19,7 @@ class App(tk.Tk):
         self.geometry('700x880')
         self.minsize(650, 800)
         self.kind = tk.StringVar(value='QR')
-        self.size = tk.StringVar(value=next(iter(PRESETS)))
+        self.size = tk.StringVar(value='1.5 × 1 in')
         self.swap = tk.BooleanVar()
         self.orientation = tk.StringVar(value='Portrait')
         self.font_size = tk.StringVar(value='8')
@@ -217,6 +217,8 @@ def self_test(destination):
     window.update()
     assert window.image is not None
     assert window.photo.width() > 0
+    assert window.size.get() == '1.5 × 1 in' and window.image.size == (336, 232)
+    window.size.set('1 × 1.5 in')
     for swapped in (False, True):
         window.swap.set(swapped)
         for orientation in ('Portrait', 'Landscape'):
